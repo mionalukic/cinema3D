@@ -1,2 +1,8 @@
 C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\glew32.dll
 C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\Sablon.exe
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\Sablon.vcxproj.CopyComplete
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\poly2tri.dll
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\minizip.dll
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\zlibd1.dll
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\kubazip.dll
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\pugixml.dll

@@ -2,6 +2,9 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+class Model;
+
+extern std::vector<Model*> humanModels;
 struct Seat {
     glm::vec3 center;
     glm::vec3 halfSize;
@@ -19,6 +22,7 @@ struct Person {
     int targetRow;
     int targetSeat;
     PersonState state;
+    int modelIndex;
 };
 
 // === GLOBAL STATE ===
@@ -65,3 +69,4 @@ extern float backTilt;
 
 extern float seatBackHeight;
 extern float seatBackDepth;
+

@@ -42,6 +42,7 @@ void spawnPeople()
         p.targetRow = seatIndex / seatsPerRow;
         p.targetSeat = seatIndex % seatsPerRow;
         p.state = ENTERING;
+        p.modelIndex = rand() % humanModels.size();
 
         people.push_back(p);
     }

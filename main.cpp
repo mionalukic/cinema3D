@@ -26,6 +26,8 @@
 
 #include <assimp/Importer.hpp>
 
+
+
 int selectedSeat = -1;
 
 bool useTex = false;
@@ -68,8 +70,9 @@ float doorSpeed = 120.0f;      // deg/sec
 
 
 
+Model* catModel = nullptr;
 
-
+std::vector<Model*> humanModels;
 
 enum class CinemaState {
     RESERVATION,
@@ -88,9 +91,10 @@ float hallLightIntensity = 1.3f;
 
 int hoveredSeat = -1;
 
-unsigned foxTexture = loadImageToTexture("res/models/fox/fox_texture.png");
 
-//Model foxModel("res/models/fox/low-poly-fox.obj");
+
+
+
 glm::vec3 screenLightDir(0.0f, 0.0f, -1.0f);
 float hallLightIntensityPlaying = 0.0f; // mrak u sali
 float screenLightIntensity = 1.8f;       // jako svetlo sa platna
@@ -301,6 +305,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
@@ -356,6 +361,19 @@ int main(void)
     GLint useScreenFalloffLoc = glGetUniformLocation(unifiedShader, "useScreenFalloff");
 
     Shader modelShader("model.vert", "model.frag");
+    catModel = new Model("res/models/cat/12221_Cat_v1_l3.obj");
+
+    const int HUMAN_COUNT = 1;
+
+    for (int i = 1; i <= HUMAN_COUNT; i++)
+    {
+        std::string path =
+            "res/models/humans/human" +
+            std::to_string(i) +
+            "/model.obj";
+
+        humanModels.push_back(new Model(path));
+    }
 
 
     glUniform1f(glGetUniformLocation(unifiedShader, "screenZ"), screenZ);
@@ -848,10 +866,8 @@ int main(void)
 
         glUniform1i(useTexLoc, 0);
 
-        // ================= LJUDI (FOX MODELI) =================
+        // ================= LJUDI (MODEL MAČKE) =================
         modelShader.use();
-
-        // view + projection (mora za ovaj shader!)
         modelShader.setMat4("view", view);
         modelShader.setMat4("projection", projectionP);
 
@@ -859,25 +875,31 @@ int main(void)
         {
             glm::mat4 m = glm::mat4(1.0f);
 
-            // POZICIJA — koristi ISTU logiku kao kocka
-            m = glm::translate(
-                m,
-                glm::vec3(
-                    p.pos.x,
-                    p.pos.y,   // ⬅ ne + personHeight
-                    p.pos.z
-                )
-            );
+            m = glm::translate(m, glm::vec3(
+                p.pos.x,
+                p.pos.y,
+                p.pos.z
+            ));
 
-            // SKALA — LISICA JE MANJA OD ČOVEKA
-            m = glm::scale(m, glm::vec3(0.6f));
+            // 1️⃣ Z-up → Y-up (Assimp people modeli su skoro uvek Z-up)
+            m = glm::rotate(m, glm::radians(90.0f), glm::vec3(0, 1, 0));
 
-            // ROTACIJA (opciono, ali lepo)
+            // 2️⃣ Okreni ka platnu
             m = glm::rotate(m, glm::radians(180.0f), glm::vec3(0, 1, 0));
 
+            // 3️⃣ Duplo manja skala
+            m = glm::scale(m, glm::vec3(0.0075f));
+
+
+
+            // okretanje ka ekranu
             modelShader.setMat4("model", m);
-            //foxModel.Draw(modelShader);
+
+            // 🔥 OVO JE KLJUČ
+            //catModel->Draw(modelShader);
+            humanModels[p.modelIndex]->Draw(modelShader);
         }
+
 
         // ================= RESET STATE POSLE MODELA =================
         glUseProgram(unifiedShader);
