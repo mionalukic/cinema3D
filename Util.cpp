@@ -7,6 +7,8 @@
 
 #include "stb_image.h"
 
+#include <GL/glew.h>
+#include <glm/gtc/type_ptr.hpp>
 // Autor: Nedeljko Tesanovic
 // Opis: pomocne funkcije za ucitavanje sejdera i tekstura
 unsigned int compileShader(GLenum type, const char* source)
@@ -157,4 +159,23 @@ GLFWcursor* loadImageToCursor(const char* filePath) {
         stbi_image_free(ImageData);
 
     }
+}
+
+
+void drawCube(
+    unsigned int cubeVAO,
+    unsigned int shader,
+    unsigned int modelLoc,
+    glm::vec3 position,
+    glm::vec3 scale
+)
+{
+    glm::mat4 model(1.0f);
+    model = glm::translate(model, position);
+    model = glm::scale(model, scale);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+    glBindVertexArray(cubeVAO);
+    for (int i = 0; i < 6; i++)
+        glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
 }

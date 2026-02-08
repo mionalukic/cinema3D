@@ -8,6 +8,11 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "Globals.h"
+#include "Camera.h"
+#include "Scene.h"
+#include "People.h"
+
 
 //GLM biblioteke
 #include <glm/glm.hpp>
@@ -21,53 +26,22 @@
 
 #include <assimp/Importer.hpp>
 
-struct Seat {
-    glm::vec3 center;
-    glm::vec3 halfSize;
-};
-
-std::vector<Seat> seats;
 int selectedSeat = -1;
 
 bool useTex = false;
 bool transparent = false;
 
-float roomWidth = 14.0f;  
-float roomDepth = 20.0f;   
-float roomHeight = 7.0f;  
-float wallThick = 0.2f;
-
-int seatRows = 14;        // broj redova
-float stepRise = 0.16f;  // blago penjanje (16 cm)
-float stepRun = 0.90f;  // dubina reda sa sedištima
-
-
-float floorY0 = 0.0f;   // početna visina 
-glm::vec3 cameraPos;
-
-float stairWidth = 1.0f;      // bočno stepenište
-float stairInset = 0.05f;     // mali razmak od zida
 float platformHeight = stepRise;     // debljina platforme
 float platformInset = stairWidth + stairInset + 0.15f;
 float platformHeightExtra = 0.0f;
 
-int seatsPerRow = 12;
 
-float seatWidth = 0.55f;
-float seatDepth = 0.55f;
-float seatHeight = 0.16f;
-
-float backHeight = 0.5f;
-float backTilt = 0.03f; // mali nagib unazad
 float platformWidth = roomWidth - 2.0f * (stairWidth + stairInset + 0.15f);
 
 float usableWidth = platformWidth - 0.4f;
-float seatSpacing = usableWidth / seatsPerRow;
-float xStart = -usableWidth * 0.5f + seatSpacing * 0.5f;
 
 float frontClear = 7.5f;   // prazan prostor kod ekrana (parter)
 float backClear = 1.0f;   // margina kod zadnjeg zida
-float rowsZStart = (roomDepth * 0.5f - frontClear);  // start kod +Z, malo unazad od zida
 
 
 float screenWidth = roomWidth * 0.7f;   // ~70% zida
@@ -81,7 +55,6 @@ float lastFrame = (float)glfwGetTime();
 // finiji osećaj
 float baseSpeed = 2.2f;     // m/s (realističnije)
 float sprintMul = 2.0f;     // SHIFT
-float eyeHeight = 1.60f;    // visina očiju
 float stepSmooth = 10.0f;   // veće = brže prati pod (8–14 je ok)
 
 // ===== VRATA =====
@@ -92,33 +65,11 @@ float doorThick = 0.08f;
 float doorAngle = 0.0f;        // 0 = zatvorena
 float doorTargetAngle = 0.0f;  // 0 ili 90
 float doorSpeed = 120.0f;      // deg/sec
-float exitZ = roomDepth * 0.5f + 1.0f;
-
-glm::vec3 doorPos = glm::vec3(
-    roomWidth * 0.5f - doorThick * 0.5f,  // DESNI ZID
-    doorHeight * 0.5f,                    // stoje na podu
-    roomDepth * 0.5f - 1.0f               // napred
-);
 
 
-enum PersonState {
-    ENTERING,    // ulazi kroz vrata
-    TURNING,     // okreće se ka stepeništu
-    CLIMBING,    // penje se uz stepenike
-    WALKING_ROW, // ide po redu ka sedištu
-    SEATED,
-    EXIT_ROW,        // ide iz sedišta ka prolazu
-    DESCENDING,      // niz stepenice
-    EXITING_DOOR     // ka vratima i napolje
-};
 
-struct Person {
-    glm::vec3 pos;
-    int targetRow;
-    int targetSeat;
-    PersonState state;
 
-};
+
 
 enum class CinemaState {
     RESERVATION,
@@ -135,14 +86,11 @@ float hallLightIntensity = 1.3f;
 
 
 
-enum class SeatStatus { FREE, RESERVED, SOLD };
-std::vector<SeatStatus> seatStatus;
-
 int hoveredSeat = -1;
 
 unsigned foxTexture = loadImageToTexture("res/models/fox/fox_texture.png");
 
-Model foxModel("res/models/fox/low-poly-fox.obj");
+//Model foxModel("res/models/fox/low-poly-fox.obj");
 glm::vec3 screenLightDir(0.0f, 0.0f, -1.0f);
 float hallLightIntensityPlaying = 0.0f; // mrak u sali
 float screenLightIntensity = 1.8f;       // jako svetlo sa platna
@@ -164,11 +112,6 @@ unsigned int preprocessTexture(const char* filepath) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     return texture;
 }
-
-bool firstMouse = true;
-float lastX, lastY = 500.0f; // Ekran nam je 1000 x 1000 piksela, kursor je inicijalno na sredini
-float yaw = -90.0f, pitch = 0.0f; // yaw -90: kamera gleda u pravcu z ose; pitch = 0: kamera gleda vodoravno
-glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0); // at-vektor je inicijalno u pravcu z ose
 
 bool rayIntersectsAABB(
     const glm::vec3& rayOrigin,
@@ -200,120 +143,13 @@ bool rayIntersectsAABB(
 
 
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.06f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(direction);
-}
-float fov = 45.0f;
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    fov -= (float)yoffset;
-    if (fov < 1.0f)
-        fov = 1.0f;
-    if (fov > 45.0f)
-        fov = 45.0f;
-}
-
-
-void drawCube(unsigned int cubeVAO, unsigned int shader, unsigned int modelLoc,
-    glm::vec3 position, glm::vec3 scale)
-{
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, position);
-    model = glm::scale(model, scale);
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(cubeVAO);
-    for (int i = 0; i < 6; i++) glDrawArrays(GL_TRIANGLE_FAN, i * 4, 4);
-}
-float getFloorHeight(float z)
-{
-    // 0) PARTE R / ISPRED PRVOG REDA (kod platna)
-    if (z >= rowsZStart)
-        return floorY0;
-
-    // 1) REDOVI (stepenasti pod)
-    float y = floorY0;
-    float zStart = rowsZStart;
-
-    for (int i = 0; i < seatRows; i++)
-    {
-        float zEnd = zStart - stepRun; // ide unazad (-Z)
-
-        if (z <= zStart && z >= zEnd)
-            return y;
-
-        zStart = zEnd;
-        y += stepRise;
-    }
-
-    // 2) IZA POSLEDNJEG REDA (kod zadnjeg zida) – ostaje na najvišem nivou
-    return floorY0 + seatRows * stepRise;
-}
-
-
-void clampCameraRoom(glm::vec3& pos)
-{
-    float margin = 0.3f;
-
-    // zidovi
-    pos.x = glm::clamp(
-        pos.x,
-        -roomWidth * 0.5f + margin,
-        roomWidth * 0.5f - margin
-    );
-
-    pos.z = glm::clamp(
-        pos.z,
-        -roomDepth * 0.5f + margin,
-        roomDepth * 0.5f - margin
-    );
-
-    // 🔑 POD + STEPENICE
-    float floorY = getFloorHeight(pos.z);
-    float minY = floorY + eyeHeight * 0.3f; // malo tolerancije
-    float maxY = roomHeight - 0.2f;
-
-    pos.y = glm::clamp(pos.y, minY, maxY);
-}
 
 
 
 
 
-std::vector<Person> people;
 
 int maxPeople = 20;
-float personSpeed = 1.2f;
 float personWidth = 0.4f;
 float personHeight = 1.7f;
 float personDepth = 0.35f;
@@ -329,56 +165,6 @@ int countTakenSeats()
     return count;
 }
 
-void spawnPeople()
-{
-    people.clear();
-
-    // 1️⃣ Sva sedišta koja imaju kartu (RESERVED ili SOLD)
-    std::vector<int> availableSeats;
-    for (int i = 0; i < (int)seatStatus.size(); i++)
-    {
-        if (seatStatus[i] == SeatStatus::RESERVED ||
-            seatStatus[i] == SeatStatus::SOLD)
-        {
-            availableSeats.push_back(i);
-        }
-    }
-
-    // Nema nikoga ako nema kupljenih/rezervisanih mesta
-    if (availableSeats.empty())
-        return;
-
-    // 2️⃣ Koliko ljudi ulazi (max = broj dostupnih sedišta)
-    int maxPeople = (int)availableSeats.size();
-    int count = 1 + rand() % maxPeople;
-
-    // 3️⃣ Za svakog čoveka – uzmi JEDNO sedište i ukloni ga
-    for (int i = 0; i < count; i++)
-    {
-        Person p;
-
-        // start pozicija kod vrata (mali Z offset da se ne sudare)
-        p.pos = glm::vec3(
-            doorPos.x - 0.15f,
-            0.0f,
-            doorPos.z - 0.3f - i * 0.4f
-        );
-
-        // nasumično izaberi jedno slobodno sedište
-        int idx = rand() % availableSeats.size();
-        int seatIndex = availableSeats[idx];
-
-        // ukloni sedište iz liste da ga niko drugi ne dobije
-        availableSeats.erase(availableSeats.begin() + idx);
-
-        // mapiranje indeksa → red / kolona
-        p.targetRow = seatIndex / seatsPerRow;
-        p.targetSeat = seatIndex % seatsPerRow;
-        p.state = ENTERING;
-
-        people.push_back(p);
-    }
-}
 
 void resetCinema()
 {
@@ -398,6 +184,8 @@ void resetCinema()
 
     // svetlo → normalno
     peopleSpawned = false;
+
+    resetPeople();
 }
 
 
@@ -469,13 +257,7 @@ bool sellNAdjacentFree(int N)
     return false; // nema mesta
 }
 
-bool allPeopleSeated()
-{
-    for (auto& p : people)
-        if (p.state != SEATED)
-            return false;
-    return true;
-}
+
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -763,7 +545,7 @@ int main(void)
     cameraPos = glm::vec3(0.0f, 1.6f, 0.0f);
     glm::vec3 cameraUp = glm::vec3(0.0, 1.0, 0.0);
 
-    view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp); // lookAt(Gdje je kamera, u sta kamera gleda, jedinicni vektor pozitivne Y ose svijeta  - ovo rotira kameru)
+    view = getViewMatrix();
     unsigned int viewLoc = glGetUniformLocation(unifiedShader, "uV");
 
 
@@ -822,123 +604,9 @@ int main(void)
         float dt = now - lastFrame;
         lastFrame = now;
 
-        for (auto& p : people)
-        {
-            float targetZ = rowsZStart - p.targetRow * stepRun;
-            float targetY = floorY0 + p.targetRow * stepRise;
-
-            float seatX =
-                xStart + p.targetSeat * seatSpacing;
-
-            switch (p.state)
-            {
-            case ENTERING:
-                // 1–2 koraka unutra
-                p.pos.z -= personSpeed * dt;
-                if (p.pos.z < doorPos.z - 1.2f)
-                    p.state = TURNING;
-                break;
-
-            case TURNING:
-                // samo logička faza (može kasnije animacija)
-                p.state = CLIMBING;
-                break;
-
-            case CLIMBING:
-            {
-                // kretanje ka redovima (po Z)
-                if (p.pos.z > targetZ)
-                    p.pos.z -= personSpeed * dt;
-
-                // AUTOMATSKO PRAĆENJE STEPENICA
-                float floorY = getFloorHeight(p.pos.z);
-                p.pos.y = floorY;
-
-                // kad stigne do svog reda
-                if (p.pos.z <= targetZ + 0.05f)
-                    p.state = WALKING_ROW;
-
-                break;
-            }
 
 
-            case WALKING_ROW:
-                // horizontalno ka svom sedištu
-                if (fabs(p.pos.x - seatX) > 0.05f)
-                {
-                    float dir = (seatX > p.pos.x) ? 1.0f : -1.0f;
-                    p.pos.x += dir * personSpeed * dt;
-                }
-                else
-                {
-                    p.state = SEATED;
-                }
-                break;
-
-            case SEATED:
-                // stoji mirno
-                break;
-            case EXIT_ROW:
-            {
-                float targetX =
-                    (p.pos.x < 0.0f)
-                    ? (-roomWidth * 0.5f + stairInset + stairWidth * 0.5f)
-                    : (roomWidth * 0.5f - stairInset - stairWidth * 0.5f);
-
-                if (fabs(p.pos.x - targetX) > 0.05f)
-                {
-                    float dir = (targetX > p.pos.x) ? 1.0f : -1.0f;
-                    p.pos.x += dir * personSpeed * dt;
-                }
-                else
-                {
-                    p.state = DESCENDING;
-                }
-                break;
-            }
-
-            case DESCENDING:
-            {
-                if (p.pos.z < doorPos.z - 1.2f)
-                    p.pos.z += personSpeed * dt;
-
-                p.pos.y = getFloorHeight(p.pos.z);
-
-                if (p.pos.z >= rowsZStart + 0.3f)
-                    p.state = EXITING_DOOR;
-
-                break;
-            }
-
-            case EXITING_DOOR:
-            {
-                // poravnaj se sa vratima po X
-                if (fabs(p.pos.x - doorPos.x) > 0.05f)
-                {
-                    float dir = (doorPos.x > p.pos.x) ? 1.0f : -1.0f;
-                    p.pos.x += dir * personSpeed * dt;
-                }
-                else
-                {
-                    // idi NAPOLJE (preko zida)
-                    p.pos.z += personSpeed * dt;
-                }
-                break;
-            }
-
-            }
-        }
-
-
-        people.erase(
-            std::remove_if(people.begin(), people.end(),
-                [&](const Person& p)
-                {
-                    return p.pos.z > exitZ;
-                }),
-            people.end()
-        );
-
+        updatePeople(dt);
 
         if (cinemaState == CinemaState::SEATING && allPeopleSeated())
         {
@@ -1069,7 +737,7 @@ int main(void)
         glUseProgram(unifiedShader);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        view = getViewMatrix();
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
         projectionP = glm::perspective(glm::radians(fov), (float)wWidth / (float)wHeight, 0.1f, 100.0f);
@@ -1089,6 +757,7 @@ int main(void)
 
         //PRIKAZ OSVETLJENJA
         glUniform1i(useTexLoc, 0);
+
         drawCube(
             cubeVAO,
             unifiedShader,
@@ -1207,7 +876,7 @@ int main(void)
             m = glm::rotate(m, glm::radians(180.0f), glm::vec3(0, 1, 0));
 
             modelShader.setMat4("model", m);
-            foxModel.Draw(modelShader);
+            //foxModel.Draw(modelShader);
         }
 
         // ================= RESET STATE POSLE MODELA =================
@@ -1225,126 +894,20 @@ int main(void)
         // vrati standardno osvetljenje (bez uticaja model shadera)
         glUniform1i(lightEnabledLoc, 1);
 
+        drawScene(
+            cubeVAO,
+            unifiedShader,
+            modelLoc,
+            seatFreeTex,
+            seatReservedTex,
+            seatSoldTex,
+            useTexLoc
+        );
 
+        glfwSwapBuffers(window);
+        glfwPollEvents();
 
-            // ================= STEPENICE UZ ZIDOVE + PLATFORME =================
-            //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            float xLeftWall = -roomWidth * 0.5f;
-            float xRightWall = roomWidth * 0.5f;
-
-            float xLeftStairs = xLeftWall + stairInset + stairWidth * 0.5f;
-            float xRightStairs = xRightWall - stairInset - stairWidth * 0.5f;
-
-            float platformWidth = roomWidth - 2.0f * (stairWidth + stairInset + 0.15f);
-            float usableWidth = platformWidth - 0.4f;
-            float seatSpacing = usableWidth / seatsPerRow;
-            float xStart = -usableWidth * 0.5f + seatSpacing * 0.5f;
-
-            float zCursor = rowsZStart;   // START kod ekrana (+Z)
-            float y = floorY0;
-
-            seats.clear();
-            for (int i = 0; i < seatRows; i++)
-            {
-                float zCenter = zCursor - stepRun * 0.5f;
-
-                // JEDAN KONTINUALAN RED (STEP + PLATFORMA)
-                drawCube(
-                    cubeVAO,
-                    unifiedShader,
-                    modelLoc,
-                    glm::vec3(
-                        0.0f,                       // centar sale po X
-                        y + stepRise * 0.5f,        // sredina visine reda
-                        zCenter                     // centar reda po Z
-                    ),
-                    glm::vec3(
-                        roomWidth,                  // CELOM ŠIRINOM SALE
-                        stepRise,                   // VISINA STEPENIKA
-                        stepRun                     // DUBINA REDA
-                    )
-                );
-
-                // ---- STOLICE OSTAJU ISTE ----
-                glUniform1i(useTexLoc, 1);
-                glBindTexture(GL_TEXTURE_2D, seatFreeTex);
-
-                for (int s = 0; s < seatsPerRow; s++)
-                {
-
-
-                    float xSeat = xStart + s * seatSpacing;
-                    int rowStartIndex = seats.size();
-
-                    int seatIndex = i * seatsPerRow + s;
-
-                    GLuint texToUse = seatFreeTex;
-                    if (seatStatus[seatIndex] == SeatStatus::RESERVED) texToUse = seatReservedTex;
-                    else if (seatStatus[seatIndex] == SeatStatus::SOLD) texToUse = seatSoldTex;
-
-                    glBindTexture(GL_TEXTURE_2D, texToUse);
-
-                    drawCube(
-                        cubeVAO,
-                        unifiedShader,
-                        modelLoc,
-                        glm::vec3(
-                            xSeat,
-                            y + stepRise + 0.04f + seatHeight * 0.5f,
-                            zCenter + stepRun * 0.1f
-                        ),
-                        glm::vec3(seatWidth, seatHeight, seatDepth)
-                    );
-
-                    drawCube(
-                        cubeVAO,
-                        unifiedShader,
-                        modelLoc,
-                        glm::vec3(
-                            xSeat,
-                            y + stepRise + seatHeight + backHeight * 0.5f,
-                            zCenter + stepRun * 0.1f - seatDepth * 0.5f + backTilt
-                        ),
-                        glm::vec3(seatWidth * 0.95f, backHeight, 0.12f)
-
-                    );
-
-                    Seat seat;
-                    seat.center = glm::vec3(
-                        xSeat,
-                        y + stepRise + 0.04f + seatHeight * 0.5f,
-                        zCenter + stepRun * 0.10f
-                    );
-                    seat.halfSize = glm::vec3(
-                        seatWidth * 0.5f,
-                        seatHeight * 0.5f,
-                        seatDepth * 0.5f
-                    );
-
-                    seats.push_back(seat);
-
-
-
-                }
-
-                glUniform1i(useTexLoc, 0);
-
-                // sledeći red
-                zCursor -= stepRun;
-                y += stepRise;
-            }
-
-
-
-
-
-            while (glfwGetTime() - startTime < 1.0 / 60) {}
-            glfwSwapBuffers(window);
-            glfwPollEvents();
         }
-
         // ++++++++++++++++++++++++++++++++++++++++++++++++++++++ POSPREMANJE +++++++++++++++++++++++++++++++++++++++++++++++++
 
 
