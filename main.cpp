@@ -611,6 +611,7 @@ int main(void)
 
     while (!glfwWindowShouldClose(window))
     {
+
         double startTime = glfwGetTime();
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         {
@@ -621,6 +622,21 @@ int main(void)
         float now = (float)glfwGetTime();
         float dt = now - lastFrame;
         lastFrame = now;
+
+        float screenPulse = 1.0f;
+
+        if (cinemaState == CinemaState::PLAYING)
+        {
+            float t = (float)(glfwGetTime() - movieStart);
+            screenPulse = 0.9f + 0.3f * sin(t * 6.0f);
+        }
+
+        glUseProgram(unifiedShader);
+        glUniform1f(
+            glGetUniformLocation(unifiedShader, "screenPulse"),
+            screenPulse
+        );
+
 
 
 
@@ -654,7 +670,7 @@ int main(void)
             glUniform1i(useScreenFalloffLoc, 1);   // ⬅️ KLJUČNO
 
             glUniform3fv(lightDirLoc, 1,
-                glm::value_ptr(glm::normalize(glm::vec3(0.0f, -0.3f, -1.0f))));
+                glm::value_ptr(glm::normalize(glm::vec3(0.0f, -0.55f, -1.0f))));
 
             glUniform3fv(lightColorLoc, 1,
                 glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
@@ -794,6 +810,7 @@ int main(void)
 
         bool playing = (cinemaState == CinemaState::PLAYING);
 
+
         if (playing && !movieFrames.empty())
         {
             double t = glfwGetTime() - movieStart;
@@ -807,12 +824,20 @@ int main(void)
             glUniform1i(useTexLoc, 1);                 // koristi teksturu
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, movieFrames[frameIndex]);
+            screenPulse = 0.85f + 0.35f * sin((float)glfwGetTime() * 6.0f);
+
         }
         else
         {
             glUniform1i(useTexLoc, 0);                 // NE koristi teksturu
             glBindTexture(GL_TEXTURE_2D, 0);
         }
+
+        glUniform1f(
+            glGetUniformLocation(unifiedShader, "screenPulse"),
+            screenPulse
+        );
+
 
         glm::mat4 screenModel = glm::mat4(1.0f);
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(screenModel));

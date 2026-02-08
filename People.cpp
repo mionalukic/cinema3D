@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cstdlib>
 
+const float PERSON_Y_OFFSET = 0.15f;
+const float EXIT_MARGIN = 1.0f;
+
 void spawnPeople()
 {
     people.clear();
@@ -63,7 +66,7 @@ void updatePeople(float dt)
     for (auto& p : people)
     {
         float targetZ = rowsZStart - p.targetRow * stepRun;
-        float targetY = floorY0 + p.targetRow * stepRise;
+        float targetY = floorY0 + p.targetRow * stepRise + stepRise;
 
         float seatX = xStart + p.targetSeat * seatSpacing;
 
@@ -84,7 +87,7 @@ void updatePeople(float dt)
             if (p.pos.z > targetZ)
                 p.pos.z -= personSpeed * dt;
 
-            p.pos.y = getFloorHeight(p.pos.z);
+            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
 
             if (p.pos.z <= targetZ + 0.05f)
                 p.state = WALKING_ROW;
@@ -120,43 +123,80 @@ void updatePeople(float dt)
             }
             else
             {
+                p.state = GO_TO_DOOR;
+            }
+            break;
+        }
+
+        case GO_TO_DOOR:
+        {
+            // cilj je centar vrata po X osi
+            float targetX = doorPos.x;
+
+            if (fabs(p.pos.x - targetX) > 0.05f)
+            {
+                float dir = (targetX > p.pos.x) ? 1.0f : -1.0f;
+                p.pos.x += dir * personSpeed * dt;
+            }
+            else
+            {
                 p.state = DESCENDING;
             }
             break;
         }
 
+
         case DESCENDING:
+        {
             p.pos.z += personSpeed * dt;
-            p.pos.y = getFloorHeight(p.pos.z);
+            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
 
             if (p.pos.z >= rowsZStart + 0.3f)
                 p.state = EXITING_DOOR;
             break;
+        }
+
+
 
         case EXITING_DOOR:
-            if (fabs(p.pos.x - doorPos.x) > 0.05f)
+        {
+            // 1. prvo dodji TACNO ispred vrata (po Z)
+            if (fabs(p.pos.z - doorPos.z) > 0.05f)
             {
-                float dir = (doorPos.x > p.pos.x) ? 1.0f : -1.0f;
-                p.pos.x += dir * personSpeed * dt;
+                float dirZ = (doorPos.z > p.pos.z) ? 1.0f : -1.0f;
+                p.pos.z += dirZ * personSpeed * dt;
             }
+            // 2. tek onda skreni kroz vrata (po X)
             else
             {
-                p.pos.z += personSpeed * dt;
+                float dirX = (doorPos.x > 0.0f) ? 1.0f : -1.0f;
+                p.pos.x += dirX * personSpeed * dt;
             }
+
+            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
             break;
         }
-    }
 
+
+
+
+       
+    }
     people.erase(
         std::remove_if(
             people.begin(),
             people.end(),
             [&](const Person& p)
             {
-                return p.pos.z > exitZ;
+                if (p.state != EXITING_DOOR)
+                    return false;
+
+                return std::abs(p.pos.x - doorPos.x) > EXIT_MARGIN;
             }),
         people.end()
     );
+
+    }
 }
 
 void resetPeople()

@@ -20,6 +20,7 @@ uniform bool useScreenFalloff;
 
 uniform int emissive;
 uniform float emissiveStrength;
+uniform float screenPulse; 
 
 void main()
 {
@@ -44,13 +45,13 @@ void main()
         if (useScreenFalloff)
         {
             float dist = abs(FragPos.z - screenZ);
-            falloff = clamp(exp(-dist * 0.5), 0.0, 1.0);
+            falloff = clamp(exp(-dist * 0.4), 0.0, 1.0);
         }
 
 
         vec3 ambient = ambientStrength * lightColor;
 
-        vec3 diffuse = diff * lightColor * lightIntensity * falloff;
+        vec3 diffuse = diff * lightColor * lightIntensity * falloff * screenPulse;
 
         color = color * ambient + color * diffuse;
     }
