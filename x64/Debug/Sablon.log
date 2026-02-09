@@ -1,4 +1,17 @@
-﻿  People.cpp
+﻿  main.cpp
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(532,31): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(532,35): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(532,39): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(533,31): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(533,35): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(533,39): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(534,31): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(534,35): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(534,39): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(535,31): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(535,35): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(535,39): warning C4305: 'initializing': truncation from 'double' to 'float'
+C:\Users\Miona\Downloads\RG_V7_Resenje\V7\main.cpp(822,49): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
   Sablon.vcxproj -> C:\Users\Miona\Downloads\RG_V7_Resenje\V7\x64\Debug\Sablon.exe
   'pwsh.exe' is not recognized as an internal or external command,
   operable program or batch file.

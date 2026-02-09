@@ -192,7 +192,16 @@ private:
 unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
 {
     string filename = string(path);
-    filename = directory + '/' + filename;
+
+    // Ako Assimp vrati samo ime fajla, dodaj textures/
+    if (filename.find("textures/") == string::npos)
+    {
+        filename = "textures/" + filename;
+    }
+
+    // Uvek relativno u odnosu na folder model.obj
+    filename = directory + "/" + filename;
+
 
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -222,11 +231,12 @@ unsigned int TextureFromFile(const char* path, const string& directory, bool gam
     }
     else
     {
-        std::cout << "Texture failed to load at path: " << path << std::endl;
+        std::cout << "Texture failed to load at FULL path: " << filename << std::endl;
         stbi_image_free(data);
     }
 
     return textureID;
 }
+
 #endif
 

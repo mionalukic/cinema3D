@@ -87,7 +87,7 @@ void updatePeople(float dt)
             if (p.pos.z > targetZ)
                 p.pos.z -= personSpeed * dt;
 
-            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
+            p.pos.y = getFloorHeight(p.pos.z);
 
             if (p.pos.z <= targetZ + 0.05f)
                 p.state = WALKING_ROW;
@@ -149,7 +149,7 @@ void updatePeople(float dt)
         case DESCENDING:
         {
             p.pos.z += personSpeed * dt;
-            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
+            p.pos.y = getFloorHeight(p.pos.z);
 
             if (p.pos.z >= rowsZStart + 0.3f)
                 p.state = EXITING_DOOR;
@@ -173,14 +173,10 @@ void updatePeople(float dt)
                 p.pos.x += dirX * personSpeed * dt;
             }
 
-            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
+            p.pos.y = getFloorHeight(p.pos.z) ;
             break;
         }
 
-
-
-
-       
     }
     people.erase(
         std::remove_if(

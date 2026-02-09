@@ -48,7 +48,7 @@ float backClear = 1.0f;   // margina kod zadnjeg zida
 
 float screenWidth = roomWidth * 0.7f;   // ~70% zida
 float screenHeight = roomHeight * 0.45f;
-float screenZ = roomDepth * 0.5f -0.2f; // malo ispred zida
+float screenZ = roomDepth * 0.5f -0.2f; // malo ispred zidastd::vector<Model*> humanModels;
 float screenY = roomHeight * 0.55f ;       // iznad partera
 
 
@@ -363,7 +363,7 @@ int main(void)
     Shader modelShader("model.vert", "model.frag");
     catModel = new Model("res/models/cat/12221_Cat_v1_l3.obj");
 
-    const int HUMAN_COUNT = 1;
+    const int HUMAN_COUNT = 9;
 
     for (int i = 1; i <= HUMAN_COUNT; i++)
     {
@@ -373,6 +373,7 @@ int main(void)
             "/model.obj";
 
         humanModels.push_back(new Model(path));
+        std::cout << "Loading model: " << path << std::endl;
     }
 
 
@@ -913,8 +914,8 @@ int main(void)
             m = glm::rotate(m, glm::radians(180.0f), glm::vec3(0, 1, 0));
 
             // 3️⃣ Duplo manja skala
-            m = glm::scale(m, glm::vec3(0.0075f));
-
+            m = glm::scale(m, glm::vec3(0.8f));
+           
 
 
             // okretanje ka ekranu
@@ -924,6 +925,22 @@ int main(void)
             //catModel->Draw(modelShader);
             humanModels[p.modelIndex]->Draw(modelShader);
         }
+
+        modelShader.use();
+
+        if (cinemaState == CinemaState::PLAYING)
+        {
+            modelShader.setFloat("ambientStrength", 0.02f);
+            modelShader.setFloat("lightIntensity", 0.2f); // skoro mrak
+            modelShader.setBool("cinemaDark", true);
+        }
+        else
+        {
+            modelShader.setFloat("ambientStrength", 0.35f);
+            modelShader.setFloat("lightIntensity", 1.0f);
+            modelShader.setBool("cinemaDark", false);
+        }
+
 
 
         // ================= RESET STATE POSLE MODELA =================
