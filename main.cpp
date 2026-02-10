@@ -12,7 +12,8 @@
 #include "Camera.h"
 #include "Scene.h"
 #include "People.h"
-
+#include <thread>
+#include <chrono>
 
 //GLM biblioteke
 #include <glm/glm.hpp>
@@ -393,6 +394,7 @@ int main(void)
     GLint uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
     GLint useTexLoc = glGetUniformLocation(unifiedShader, "useTex");
     GLint transparentLoc = glGetUniformLocation(unifiedShader, "transparent");
+    GLuint nameTagTex = preprocessTexture("textures/name_tag.png");
 
     glUniform1i(uTexLoc, 0);            // sampler koristi TEXTURE0
     glUniform1i(useTexLoc, 0);          // default: bez teksture
@@ -434,6 +436,34 @@ int main(void)
     glEnableVertexAttribArray(3);
 
     glBindVertexArray(0);
+
+    float overlayVertices[] = {
+        // pos (x,y,z)      // color        // uv        // normal (nebitan)
+        0.0f, 0.0f, 0.0f,   1,1,1,0.7f,      0,0,        0,0,1,
+        1.0f, 0.0f, 0.0f,   1,1,1,0.7f,      1,0,        0,0,1,
+        1.0f, 1.0f, 0.0f,   1,1,1,0.7f,      1,1,        0,0,1,
+        0.0f, 1.0f, 0.0f,   1,1,1,0.7f,      0,1,        0,0,1
+    };
+
+    GLuint overlayVAO, overlayVBO;
+    glGenVertexArrays(1, &overlayVAO);
+    glGenBuffers(1, &overlayVBO);
+
+    glBindVertexArray(overlayVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, overlayVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(overlayVertices), overlayVertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(7 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)(10 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+
+    glBindVertexArray(0);
+
 
 
     float roomVertices[] =
@@ -594,6 +624,7 @@ int main(void)
     GLuint seatFreeTex = preprocessTexture("textures/seat_blue.jpg");
     GLuint seatReservedTex = preprocessTexture("textures/seat_yellow.jpg");
     GLuint seatSoldTex = preprocessTexture("textures/seat_red.jpg");
+    
 
 
     for (int i = 0; i < 56; i++) {
@@ -609,9 +640,12 @@ int main(void)
 
     float movieDuration = movieFrames.size() / movieFps;
 
+    const double TARGET_FPS = 75.0;
+    const double TARGET_FRAME_TIME = 1.0 / TARGET_FPS;
 
     while (!glfwWindowShouldClose(window))
     {
+        double frameStart = glfwGetTime();
 
         double startTime = glfwGetTime();
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -967,6 +1001,62 @@ int main(void)
             seatSoldTex,
             useTexLoc
         );
+
+        // ===== HUD / IME STUDENTA =====
+        glDisable(GL_DEPTH_TEST);
+
+        glUseProgram(unifiedShader);
+
+        // ortho projekcija u pixel koordinatama
+        glm::mat4 ortho = glm::ortho(
+            0.0f, (float)wWidth,
+            0.0f, (float)wHeight
+        );
+
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(glm::mat4(1.0f)));
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(ortho));
+
+        // POZICIJA – npr. DONJI DESNI UGAO
+        float overlayW = 260.0f;
+        float overlayH = 80.0f;
+
+        glm::mat4 overlayModel = glm::mat4(1.0f);
+        overlayModel = glm::translate(
+            overlayModel,
+            glm::vec3(wWidth - overlayW - 20.0f, 20.0f, 0.0f)
+        );
+        overlayModel = glm::scale(
+            overlayModel,
+            glm::vec3(overlayW, overlayH, 1.0f)
+        );
+
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(overlayModel));
+
+        glUniform1i(useTexLoc, 1);
+        glBindTexture(GL_TEXTURE_2D, nameTagTex);
+
+        glBindVertexArray(overlayVAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glUniform1i(useTexLoc, 0);
+
+        glEnable(GL_DEPTH_TEST);
+
+
+        double frameEnd = glfwGetTime();
+        double frameTime = frameEnd - frameStart;
+
+        if (frameTime < TARGET_FRAME_TIME)
+        {
+            std::this_thread::sleep_for(
+                std::chrono::duration<double>(TARGET_FRAME_TIME - frameTime)
+            );
+        }
+
+
+
 
         glfwSwapBuffers(window);
         glfwPollEvents();

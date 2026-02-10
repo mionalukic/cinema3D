@@ -23,6 +23,7 @@ struct Person {
     int targetSeat;
     PersonState state;
     int modelIndex;
+
 };
 
 // === GLOBAL STATE ===
