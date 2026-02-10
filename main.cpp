@@ -69,6 +69,9 @@ float doorAngle = 0.0f;        // 0 = zatvorena
 float doorTargetAngle = 0.0f;  // 0 ili 90
 float doorSpeed = 120.0f;      // deg/sec
 
+bool depthTestEnabled = true;
+bool cullFaceEnabled = true;
+
 
 
 Model* catModel = nullptr;
@@ -290,6 +293,27 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             spawnPeople();
         }
     }
+
+    // === TOGGLE DEPTH TEST ===
+    if (key == GLFW_KEY_F1)
+    {
+        depthTestEnabled = !depthTestEnabled;
+        if (depthTestEnabled)
+            glEnable(GL_DEPTH_TEST);
+        else
+            glDisable(GL_DEPTH_TEST);
+    }
+
+    // === TOGGLE FACE CULLING ===
+    if (key == GLFW_KEY_F2)
+    {
+        cullFaceEnabled = !cullFaceEnabled;
+        if (cullFaceEnabled)
+            glEnable(GL_CULL_FACE);
+        else
+            glDisable(GL_CULL_FACE);
+    }
+
 }
 
 

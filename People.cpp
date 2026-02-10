@@ -74,6 +74,7 @@ void updatePeople(float dt)
         {
         case ENTERING:
             p.pos.z -= personSpeed * dt;
+            p.pos.y = floorY0;
             if (p.pos.z < doorPos.z - 1.2f)
                 p.state = TURNING;
             break;
@@ -87,7 +88,7 @@ void updatePeople(float dt)
             if (p.pos.z > targetZ)
                 p.pos.z -= personSpeed * dt;
 
-            p.pos.y = getFloorHeight(p.pos.z);
+            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
 
             if (p.pos.z <= targetZ + 0.05f)
                 p.state = WALKING_ROW;
@@ -133,6 +134,7 @@ void updatePeople(float dt)
             // cilj je centar vrata po X osi
             float targetX = doorPos.x;
 
+
             if (fabs(p.pos.x - targetX) > 0.05f)
             {
                 float dir = (targetX > p.pos.x) ? 1.0f : -1.0f;
@@ -149,7 +151,7 @@ void updatePeople(float dt)
         case DESCENDING:
         {
             p.pos.z += personSpeed * dt;
-            p.pos.y = getFloorHeight(p.pos.z);
+            p.pos.y = getFloorHeight(p.pos.z) + PERSON_Y_OFFSET;
 
             if (p.pos.z >= rowsZStart + 0.3f)
                 p.state = EXITING_DOOR;
@@ -173,7 +175,7 @@ void updatePeople(float dt)
                 p.pos.x += dirX * personSpeed * dt;
             }
 
-            p.pos.y = getFloorHeight(p.pos.z) ;
+            p.pos.y = floorY0;
             break;
         }
 
